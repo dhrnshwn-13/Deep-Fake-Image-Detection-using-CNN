@@ -4,8 +4,6 @@ A convolutional neural network that classifies face images as **real** or **AI-g
 
 The model is a custom CNN trained from scratch (no transfer learning) on real faces from FFHQ and synthetic faces from ThisPersonDoesNotExist.
 
-![Project preview](image.jpg)
-
 ## Results
 
 Evaluated on a held-out validation split of 1,200 images (600 real, 600 fake, roughly), with "fake" as the positive class.

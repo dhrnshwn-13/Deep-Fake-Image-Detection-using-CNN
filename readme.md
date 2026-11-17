@@ -1,99 +1,118 @@
-# Deepfake Detection
+# Deepfake Image Detection using CNN
 
-### A Full-Stack Deepfake Detection Application developed FastAPI, Tensorflow, OpenCV, React.js and Tailwind CSS
+A convolutional neural network that classifies face images as **real** or **AI-generated**, wrapped in a FastAPI backend that accepts an uploaded image or a short video clip and returns a verdict.
 
-## To run this project locally:
-#### Pre requisites: Python(>=3.10), Node.js(>=18.19)
+The model is a custom CNN trained from scratch (no transfer learning) on real faces from FFHQ and synthetic faces from ThisPersonDoesNotExist.
 
-* Clone this repository
-```
-cd deepfake-detection
-```
-* Setup python virtual environment and install dependencies
-```
-python3 -m venv ./venv
-source ./venv/bin/activate
+![Project preview](image.jpg)
+
+## Results
+
+Evaluated on a held-out validation split of 1,200 images (600 real, 600 fake, roughly), with "fake" as the positive class.
+
+| Metric | Score |
+|--------|-------|
+| Accuracy | 99.0% (1,188 / 1,200 correct) |
+| Precision | 98.9% |
+| Recall | 99.2% |
+
+|  | Predicted real | Predicted fake |
+|--|----------------|----------------|
+| **Actually real** | 586 | 7 |
+| **Actually fake** | 5 | 602 |
+
+Training ran for 100 epochs. The best checkpoint (by validation accuracy, 99.0%) was saved and used for these numbers.
+
+**Read these numbers with some caution.** Both classes come from one real dataset and one generator, and the same validation split was used to pick the best checkpoint, so there is no fully untouched test set. Real-world accuracy on other generators or compressed images will likely be lower (see Limitations).
+
+## Dataset
+
+| Class | Source | Images used |
+|-------|--------|-------------|
+| Real | FFHQ face thumbnails (128×128) | 3,000 |
+| Fake | ThisPersonDoesNotExist (StyleGAN faces) | 3,000 |
+
+- Images are loaded at 128×128 and scaled to the 0–1 range.
+- Random 80/20 split: 4,800 training and 1,200 validation images.
+- The datasets are not stored in this repo. Both are available on Kaggle (the notebook reads them from `ffhq-face-data-set` and `person-face-dataset-thispersondoesnotexist`).
+
+## Model
+
+A 10-layer CNN with about 653k parameters.
+
+- **Convolutional part:** three 5×5 conv layers with 64 filters, followed by three 3×3 conv layers (32, 16, 16 filters) with dilation rate 2 to widen the receptive field. Every conv layer is followed by ReLU and max pooling.
+- **Classifier head:** global average pooling, then dense layers of 400, 512 and 400 units, each with ReLU and 50% dropout, and a 2-unit sigmoid output.
+- **Training setup:** Adam optimizer (learning rate 1e-5), binary cross-entropy loss, batch size 32, 100 epochs, with a checkpoint saved whenever validation accuracy improved.
+
+## How the API works
+
+`app.py` exposes three routes:
+
+| Route | Method | Input | Purpose |
+|-------|--------|-------|---------|
+| `/` | GET | none | Health check |
+| `/predictImage` | POST | form field `image` | Classify one image |
+| `/predictVideo` | POST | form field `video` | Classify a video clip |
+
+Both prediction routes return JSON like `{"result": 1}`:
+
+| Value | Meaning |
+|-------|---------|
+| `0` | Real |
+| `1` | Deepfake |
+| `-1` | No face detected (images) |
+
+Before classification, `features.py` finds a face with OpenCV's Haar cascade detector, crops it with a margin, resizes it and scales the pixels. For video, it checks roughly every third frame and returns `1` as soon as one frame is flagged as fake.
+
+## Run it locally
+
+Requires Python 3.11 (see `runtime.txt`).
+
+```bash
+git clone https://github.com/dhrnshwn-13/Deep-Fake-Image-Detection-using-CNN.git
+cd Deep-Fake-Image-Detection-using-CNN
+
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+
 pip install -r requirements.txt
-```
-* Install frontend dependencies (present inside cilent directory)
-```
-cd client
-npm install
-```
-
-* Go to parent directory (where app.py is located) and run the FastAPI server using:
-```
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-```
-Now our FastAPI server must be running on localhost:8000 (make sure that your port 8000 is free before running previous command).
-
-* Go to client directory and create another terminal (where package.json is located) and run the React App using:
-```
-npm run dev
-```
-Now our React App must be running on localhost:5173 (or on any port >5173 if it is not free).
-
-
-## Project description
-The main model is a **10 Layer Deep CNN Architecture**, which is optimized for effective image processing and classification, and specifically adapted to the deepfake detection task.
-
-### Model Structure
-* With more than 653k parameters and dropout as the only regularization method, the model was quite straightforward.
-* The dropout rate in dense layers is set at 0.5, preventing overfitting by forcing neurons to learn independently. 50% of neurons in each batch or training example are randomly removed, creating a new neural network for each batch, and the average prediction is obtained.
-* The initial few Convolution layers had a kernel size of 5 and 64 filters, followed by max-pooling, unlike later layers with fewer filters and a dilation rate of 2.
-* The benefit of dilated convolutions is obvious: they produce a bigger field of reception. The dilation rate was maintained at its standard level. You'll see that our network is only dilated in the final three layers.
-* We use a binary classification model, and the output is based on sigmoid activation.
-* Input image size used is [224,224,3].
-* The training accuracy achieved was <99.9% and the validation accuracy too achieved was <99% (Extremely accurate).
-
-<img src="client/public/model_structure.png"/>
-
-
-## Performance Analysis
-
-* **Training Logs**
-<img src="client/public/logs.png"/>
-
-* **Evaluation Metrics: Accuracy, Precision, Recall**
-<img src="client/public/score1.png"/>
-<img src="client/public/score2.png"/>
-
-* **Confusion Matrix**
-    * True Positive: 602
-    * False Positive: 7
-    * False Negative: 5
-    * True Negative: 586
-    <br/>
-    <img src="client/public/confusion_matrix.png" style="height:300px; width:300px; display:block margin-bottom:100px;"/>
-
-
-* **ROC-AUC curve**
-<img src="client/public/ROC.png"/>
-
-
-## Post-Training Pipeline
-<img src="client/public/pipeline.png"/>
-
-## Application Architecture (Client-Server)
-<img src="client/public/application_architecture.png">
-
-
-## Screenshots
-<img src="client/public/df1.png"/>
-<img src="client/public/df2.png"/>
-<img src="client/public/df3.png"/>
-<img src="client/public/df5.png"/>
-<img src="client/public/df4.png"/>
-
-
-
+pip install python-multipart     # needed by FastAPI for file uploads
 
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
 
+`features.py` loads the trained model from `./models/deepfake2.keras`. **[FILL IN: that file isn't in the repo. Say where to download it, or how to generate it.]**
 
+Test it:
 
-cd .\deepfake-detection-main\deepfake-detection-main\client 
+```bash
+curl -X POST -F "image=@face.jpg" http://localhost:8000/predictImage
+```
 
-npm run dev
+**[CONFIRM: `training.ipynb` trains on 128×128 inputs, but `features.py` resizes faces to 224×224 before prediction. State which input size the deployed model expects, and whether `deepfake2.keras` is the model from the notebook.]**
 
-.\myenv\Scripts\activate
+## Limitations
+
+- Trained on one real dataset (FFHQ) and one generator (StyleGAN). It has not been tested on diffusion-model images, face swaps or heavily compressed photos, so don't expect 99% outside this setup.
+- Face detection uses a Haar cascade, which misses faces that are small, rotated or partly hidden.
+- For video, a clip with no detectable face currently comes back as `0` (real) instead of `-1`, and a single frame flagged as fake makes the whole clip "deepfake", which can produce false positives.
+- No data augmentation was applied during training.
+
+## What I'd improve next
+
+- Hold out a separate test set that is never used for checkpoint selection
+- Test on fakes from other generators to measure how well the model generalizes
+- Add Grad-CAM heatmaps to show which parts of the face drive a prediction
+- Smooth video predictions over several frames instead of trusting a single frame
+
+## Tech stack
+
+Python, TensorFlow/Keras, OpenCV, FastAPI, Uvicorn
+
+## Acknowledgements
+
+**[FILL IN: if this project builds on or adapts someone else's open-source work, credit them here with a link.]**
+
+## Author
+
+**Dharun** · [GitHub](https://github.com/dhrnshwn-13)

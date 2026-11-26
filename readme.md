@@ -78,15 +78,12 @@ pip install python-multipart     # needed by FastAPI for file uploads
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-`features.py` loads the trained model from `./models/deepfake2.keras`. **[FILL IN: that file isn't in the repo. Say where to download it, or how to generate it.]**
-
 Test it:
 
 ```bash
 curl -X POST -F "image=@face.jpg" http://localhost:8000/predictImage
 ```
 
-**[CONFIRM: `training.ipynb` trains on 128×128 inputs, but `features.py` resizes faces to 224×224 before prediction. State which input size the deployed model expects, and whether `deepfake2.keras` is the model from the notebook.]**
 
 ## Limitations
 

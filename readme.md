@@ -104,10 +104,6 @@ curl -X POST -F "image=@face.jpg" http://localhost:8000/predictImage
 
 Python, TensorFlow/Keras, OpenCV, FastAPI, Uvicorn
 
-## Acknowledgements
-
-**[FILL IN: if this project builds on or adapts someone else's open-source work, credit them here with a link.]**
-
 ## Author
 
 **Dharun** · [GitHub](https://github.com/dhrnshwn-13)

@@ -1,6 +1,6 @@
 # Deepfake Image Detection using CNN
 
-A convolutional neural network that classifies face images as **real** or **AI-generated**, wrapped in a FastAPI backend that accepts an uploaded image or a short video clip and returns a verdict.
+A convolutional neural network that classifies face images as **real** or **AI-generated**, wrapped in a FastAPI backend that accepts an uploaded image and returns a prediction.
 
 The model is a custom CNN trained from scratch (no transfer learning) on real faces from FFHQ and synthetic faces from ThisPersonDoesNotExist.
 
@@ -44,15 +44,14 @@ A 10-layer CNN with about 653k parameters.
 
 ## How the API works
 
-`app.py` exposes three routes:
+`app.py` exposes two routes:
 
 | Route | Method | Input | Purpose |
 |-------|--------|-------|---------|
 | `/` | GET | none | Health check |
 | `/predictImage` | POST | form field `image` | Classify one image |
-| `/predictVideo` | POST | form field `video` | Classify a video clip |
 
-Both prediction routes return JSON like `{"result": 1}`:
+The prediction route returns JSON like `{"result": 1}`:
 
 | Value | Meaning |
 |-------|---------|
@@ -60,7 +59,7 @@ Both prediction routes return JSON like `{"result": 1}`:
 | `1` | Deepfake |
 | `-1` | No face detected (images) |
 
-Before classification, `features.py` finds a face with OpenCV's Haar cascade detector, crops it with a margin, resizes it and scales the pixels. For video, it checks roughly every third frame and returns `1` as soon as one frame is flagged as fake.
+Before classification, `features.py` finds a face with OpenCV's Haar cascade detector, crops it with a margin, resizes it and scales the pixels.
 
 ## Run it locally
 
@@ -93,7 +92,6 @@ curl -X POST -F "image=@face.jpg" http://localhost:8000/predictImage
 
 - Trained on one real dataset (FFHQ) and one generator (StyleGAN). It has not been tested on diffusion-model images, face swaps or heavily compressed photos, so don't expect 99% outside this setup.
 - Face detection uses a Haar cascade, which misses faces that are small, rotated or partly hidden.
-- For video, a clip with no detectable face currently comes back as `0` (real) instead of `-1`, and a single frame flagged as fake makes the whole clip "deepfake", which can produce false positives.
 - No data augmentation was applied during training.
 
 ## What I'd improve next
@@ -101,7 +99,6 @@ curl -X POST -F "image=@face.jpg" http://localhost:8000/predictImage
 - Hold out a separate test set that is never used for checkpoint selection
 - Test on fakes from other generators to measure how well the model generalizes
 - Add Grad-CAM heatmaps to show which parts of the face drive a prediction
-- Smooth video predictions over several frames instead of trusting a single frame
 
 ## Tech stack
 
